@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1a56db">
+  <meta name="description" content="ប្រព័ន្ធគ្រប់គ្រង និងស្រង់វត្តមានសិស្សសម្រាប់សាលារៀននៅកម្ពុជា (Student Attendance Management System)">
+  <title>ប្រព័ន្ធគ្រប់គ្រងវត្តមានសិស្ស | Student Attendance System</title>
+  
+  <!-- Web Fonts: Kantumruy Pro & Battambang -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Battambang:wght@400;700&family=Kantumruy+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/responsive.css">
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+
+  <!-- SheetJS Library (Real Excel Import/Export) -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js" defer></script>
+</head>
+<body>
+
+  <!-- Offline Status Banner -->
+  <div id="connection-banner" class="connection-banner hidden" role="status" aria-live="polite">
+    <span class="status-indicator"></span>
+    <span id="connection-text">កំពុងដំណើរការលើប្រព័ន្ធ</span>
+  </div>
+
+  <div class="app-layout">
+    <!-- Sidebar Navigation (Desktop) -->
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-logo">🏫</div>
+        <div class="brand-info">
+          <h1 class="brand-title">វត្តមានសិស្ស</h1>
+          <span class="brand-subtitle">School Attendance</span>
+        </div>
+      </div>
+
+      <nav class="nav-menu" aria-label="Main Navigation">
+        <button class="nav-item active" data-page="dashboard">
+          <span class="nav-icon">📊</span>
+          <span class="nav-label">ផ្ទាំងសង្ខេប</span>
+          <span class="nav-sub">Dashboard</span>
+        </button>
+        <button class="nav-item" data-page="attendance">
+          <span class="nav-icon">📝</span>
+          <span class="nav-label">ស្រង់វត្តមាន</span>
+          <span class="nav-sub">Take Attendance</span>
+        </button>
+        <button class="nav-item" data-page="history">
+          <span class="nav-icon">📅</span>
+          <span class="nav-label">ប្រវត្តិវត្តមាន</span>
+          <span class="nav-sub">Attendance History</span>
+        </button>
+        <button class="nav-item" data-page="students">
+          <span class="nav-icon">👨‍🎓</span>
+          <span class="nav-label">បញ្ជីសិស្ស</span>
+          <span class="nav-sub">Students</span>
+        </button>
+        <button class="nav-item" data-page="classes">
+          <span class="nav-icon">🏛️</span>
+          <span class="nav-label">ថ្នាក់រៀន</span>
+          <span class="nav-sub">Classes</span>
+        </button>
+        <button class="nav-item" data-page="reports">
+          <span class="nav-icon">📈</span>
+          <span class="nav-label">របាយការណ៍</span>
+          <span class="nav-sub">Reports</span>
+        </button>
+        <button class="nav-item" data-page="import-export">
+          <span class="nav-icon">📂</span>
+          <span class="nav-label">នាំចូល / នាំចេញ</span>
+          <span class="nav-sub">Import / Export</span>
+        </button>
+        <button class="nav-item" data-page="settings">
+          <span class="nav-icon">⚙️️</span>
+          <span class="nav-label">ការកំណត់</span>
+          <span class="nav-sub">Settings</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="demo-badge-container" id="demo-badge-box">
+          <span class="badge badge-warning" id="demo-badge">ទិន្នន័យសាកល្បង (Demo)</span>
+        </div>
+        <div class="school-name-display" id="sidebar-school-name">សាលារៀនគំរូ</div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content" id="main-content">
+      
+      <!-- Top Mobile App Bar -->
+      <header class="mobile-header">
+        <div class="mobile-header-brand">
+          <span class="mobile-logo">🏫</span>
+          <span class="mobile-title" id="page-title-mobile">ផ្ទាំងសង្ខេប</span>
+        </div>
+        <div class="mobile-header-actions">
+          <span id="mobile-online-status" class="status-dot online"></span>
+        </div>
+      </header>
+
+      <!-- 1. DASHBOARD PAGE -->
+      <section id="page-dashboard" class="page-section active">
+        <div class="page-header">
+          <div>
+            <h2 class="section-title">ផ្ទាំងសង្ខេបព័ត៌មានវត្តមាន</h2>
+            <p class="section-desc">ទិដ្ឋភាពទូទៅនៃស្ថានភាពវត្តមានប្រចាំថ្ងៃ និងទិន្នន័យសាលារៀន</p>
+          </div>
+          <div class="date-badge" id="current-cambodia-date">--/--/----</div>
+        </div>
+
+        <!-- KPI Grid -->
+        <div class="kpi-grid">
+          <div class="kpi-card card">
+            <div class="kpi-icon bg-primary-subtle">👨‍🎓</div>
+            <div class="kpi-data">
+              <span class="kpi-label">សិស្សសរុប (Students)</span>
+              <span class="kpi-value" id="kpi-total-students">0</span>
+            </div>
+          </div>
+          <div class="kpi-card card">
+            <div class="kpi-icon bg-info-subtle">🏛️</div>
+            <div class="kpi-data">
+              <span class="kpi-label">ថ្នាក់រៀន (Classes)</span>
+              <span class="kpi-value" id="kpi-total-classes">0</span>
+            </div>
+          </div>
+          <div class="kpi-card card">
+            <div class="kpi-icon bg-warning-subtle">📋</div>
+            <div class="kpi-data">
+              <span class="kpi-label">ស្រង់វត្តមានថ្ងៃនេះ</span>
+              <span class="kpi-value" id="kpi-today-sessions">0 / 0</span>
+            </div>
+          </div>
+          <div class="kpi-card card">
+            <div class="kpi-icon bg-success-subtle">📈</div>
+            <div class="kpi-data">
+              <span class="kpi-label">អត្រាមករៀនថ្ងៃនេះ</span>
+              <span class="kpi-value" id="kpi-attendance-rate">0%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Today's Class Attendance Status -->
+        <div class="card mt-4">
+          <div class="card-header">
+            <h3 class="card-title">ស្ថានភាពស្រង់វត្តមានតាមថ្នាក់ថ្ងៃនេះ (Today's Classes)</h3>
+            <button class="btn btn-primary btn-sm" id="btn-quick-take-attendance">
+              ➕ ស្រង់វត្តមានឥឡូវនេះ
+            </button>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table" id="dashboard-classes-table">
+              <thead>
+                <tr>
+                  <th>ថ្នាក់រៀន</th>
+                  <th>កម្រិត</th>
+                  <th>ចំនួនសិស្ស</th>
+                  <th>ស្ថានភាពថ្ងៃនេះ</th>
+                  <th>មករៀន (✓)</th>
+                  <th>អវត្តមាន (✕)</th>
+                  <th>យឺត (⏰)</th>
+                  <th>សកម្មភាព</th>
+                </tr>
+              </thead>
+              <tbody id="dashboard-classes-tbody">
+                <!-- Injected by JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. ATTENDANCE PAGE (PRIMARY CORE WORKFLOW) -->
+      <section id="page-attendance" class="page-section">
+        <div class="page-header">
+          <div>
+            <h2 class="section-title">ស្រង់វត្តមានសិស្ស</h2>
+            <p class="section-desc">ជ្រើសរើសថ្នាក់ កាលបរិច្ឆេទ មុខវិជ្ជា និងម៉ោងសិក្សា</p>
+          </div>
+          <div class="fast-mode-notice" id="fast-mode-badge">
+            ⚡ របៀបលឿន៖ សិស្សទាំងអស់កំណត់ជា «មករៀន» ដោយស្វ័យប្រវត្ត
+          </div>
+        </div>
+
+        <!-- Attendance Setup Controls -->
+        <div class="card card-controls">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="att-class-select">ថ្នាក់រៀន (Class) <span class="required">*</span></label>
+              <select id="att-class-select" class="form-control">
+                <option value="">-- ជ្រើសរើសថ្នាក់ --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="att-date-input">កាលបរិច្ឆេទ (Date) <span class="required">*</span></label>
+              <input type="date" id="att-date-input" class="form-control">
+            </div>
+            <div class="form-group">
+              <label for="att-subject-select">មុខវិជ្ជា (Subject) <span class="required">*</span></label>
+              <select id="att-subject-select" class="form-control">
+                <option value="Digital Literacy">Digital Literacy (បំណិនឌីជីថល)</option>
+                <option value="ភាសាខ្មែរ">ភាសាខ្មែរ (Khmer Language)</option>
+                <option value="គណិតវិទ្យា">គណិតវិទ្យា (Mathematics)</option>
+                <option value="វិទ្យាសាស្ត្រ">វិទ្យាសាស្ត្រ (Science)</option>
+                <option value="សិក្សាសង្គម">សិក្សាសង្គម (Social Studies)</option>
+                <option value="ភាសាអង់គ្លេស">ភាសាអង់គ្លេស (English)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="att-period-select">ម៉ោងសិក្សា (Period) <span class="required">*</span></label>
+              <select id="att-period-select" class="form-control">
+                <option value="1">ម៉ោងទី ១ (Period 1)</option>
+                <option value="2">ម៉ោងទី ២ (Period 2)</option>
+                <option value="3">ម៉ោងទី ៣ (Period 3)</option>
+                <option value="4">ម៉ោងទី ៤ (Period 4)</option>
+                <option value="5">ម៉ោងទី ៥ (Period 5)</option>
+                <option value="6">ម៉ោងទី ៦ (Period 6)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Fast Action Toolbar -->
+          <div class="attendance-toolbar mt-3">
+            <div class="toolbar-left">
+              <span class="student-count-indicator" id="att-total-display">សិស្ស: ០ នាក់</span>
+              <button type="button" class="btn btn-outline-success btn-sm" id="btn-mark-all-present">
+                ✓ មករៀនទាំងអស់ (All Present)
+              </button>
+              <button type="button" class="btn btn-outline-danger btn-sm" id="btn-mark-all-absent">
+                ✕ អវត្តមានទាំងអស់
+              </button>
+            </div>
+            <div class="toolbar-right">
+              <input type="search" id="att-student-search" class="form-control form-control-sm" placeholder="🔍 ស្វែងរកឈ្មោះ ឬអត្តលេខ...">
+            </div>
+          </div>
+        </div>
+
+        <!-- Student Attendance List / Mobile Cards -->
+        <div class="attendance-list-container mt-3" id="attendance-students-container">
+          <div class="empty-state">
+            <div class="empty-icon">👈</div>
+            <h3>សូមជ្រើសរើសថ្នាក់រៀន</h3>
+            <p>ជ្រើសរើសថ្នាក់ខាងលើដើម្បីបង្ហាញបញ្ជីសិស្ស និងស្រង់វត្តមាន</p>
+          </div>
+        </div>
+
+        <!-- Sticky Floating Attendance Summary Footer -->
+        <div class="attendance-sticky-summary" id="attendance-summary-bar">
+          <div class="summary-pills">
+            <div class="summary-pill pill-total">សរុប: <strong id="sum-total">0</strong></div>
+            <div class="summary-pill pill-present">មករៀន: <strong id="sum-present">0</strong></div>
+            <div class="summary-pill pill-absent">អវត្តមាន: <strong id="sum-absent">0</strong></div>
+            <div class="summary-pill pill-late">យឺត: <strong id="sum-late">0</strong></div>
+            <div class="summary-pill pill-excused">ច្បាប់: <strong id="sum-excused">0</strong></div>
+            <div class="summary-pill pill-rate">អត្រា: <strong id="sum-rate">0%</strong></div>
+          </div>
+          <div class="summary-actions">
+            <button class="btn btn-success btn-lg" id="btn-save-attendance">
+              💾 រក្សាទុកវត្តមាន (Save)
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. STUDENTS PAGE -->
+      <section id="page-students" class="page-section">
+        <div class="page-header">
+          <div>
+            <h2 class="section-title">គ្រប់គ្រងបញ្ជីសិស្ស</h2>
+            <p class="section-desc">បញ្ជីព័ត៌មានសិស្សតាមថ្នាក់ និងស្ថានភាពសិស្ស</p>
+          </div>
+          <div class="header-buttons">
+            <button class="btn btn-outline-primary" id="btn-quick-import-students">📥 នាំចូល Excel</button>
+            <button class="btn btn-primary" id="btn-add-student">➕ បន្ថែមសិស្សថ្មី</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="filter-bar">
+            <div class="filter-item">
+              <select id="filter-student-class" class="form-control">
+                <option value="ALL">-- ថ្នាក់ទាំងអស់ --</option>
+              </select>
+            </div>
+            <div class="filter-item">
+              <select id="filter-student-status" class="form-control">
+                <option value="active">កំពុងរៀន (Active)</option>
+                <option value="archived">ទុកជាឯកសារ (Archived)</option>
+                <option value="ALL">ស្ថានភាពទាំងអស់</option>
+              </select>
+            </div>
+            <div class="filter-item filter-search">
+              <input type="search" id="filter-student-keyword" class="form-control" placeholder="ស្វែងរកតាមឈ្មោះ, អត្តលេខ...">
+            </div>
+          </div>
+
+          <div class="table-responsive mt-3">
+            <table class="data-table" id="students-table">
+              <thead>
+                <tr>
+                  <th style="width: 50px;">ល.រ</th>
+                  <th>ឈ្មោះសិស្ស (Khmer)</th>
+                  <th>អត្តលេខ</th>
+                  <th>ភេទ</th>
+                  <th>ថ្នាក់</th>
+                  <th>លេខទូរស័ព្ទអាណាព្យាបាល</th>
+                  <th>ស្ថានភាព</th>
+                  <th style="text-align: right;">សកម្មភាព</th>
+                </tr>
+              </thead>
+              <tbody id="students-table-tbody">
+                <!-- Injected via JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. CLASSES PAGE -->
+      <section id="page-classes" class="page-section">
+        <div class="page-header">
+          <div>
+            <h2 class="section-title">គ្រប់គ្រងថ្នាក់រៀន</h2>
+            <p class="section-desc">បង្កើត កែប្រែ និងពិនិត្យមើលចំនួនសិស្សតាមថ្នាក់</p>
+          </div>
+          <button class="btn btn-primary" id="btn-add-class">➕ បង្កើតថ្នាក់ថ្មី</button>
+        </div>
+
+        <div class="classes-grid" id="classes-cards-grid">
+          <!-- Class cards injected via JavaScript -->
+        </div>
+      </section>
+
+      <!-- 5. ATTENDANCE HISTORY PAGE -->
+      <section id="page-history" class="page-section">
+        <div class="page-header">
+          <div>
+            <h2 class="section-title">ប្រវត្តិស្រង់វត្តមាន</h2>
+            <p class="section-desc">ស្វែងរក ត្រួតពិនិត្យ និងកែប្រែកំណត់ត្រាវត្តមានដែលបានរក្សាទុក</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="filter-grid">
+            <div class="form-group">
+              <label>ពីថ្ងៃ (From)</label>
+              <input type="date" id="history-from-date" class="form-control">
+            </div>
+            <div class="form-group">
+              <label>ដល់ថ្ងៃ (To)</label>
+              <input type="date" id="history-to-date" class="form-control">
+            </div>
+            <div class="form-group">
+              <label>ថ្នាក់រៀន (Class)</label>
+              <select id="history-class-filter" class="form-control">
+                <option value="ALL">-- ថ្នាក់ទាំងអស់ --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>មុខវិជ្ជា (Subject)</label>
+              <select id="history-subject-filter" class="form-control">
+                <option value="ALL">-- មុខវិជ្ជាទាំងអស់ --</option>
+              </select>
+            </div>
+          </div>
+          <div class="mt-3 text-right">
+            <button class="btn btn-outline-secondary btn-sm" id="btn-reset-history-filter">កំណត់ឡើងវិញ</button>
+            <button class="btn btn-primary btn-sm" id="btn-apply-history-filter">🔍 ស្វែងរក</button>
+          </div>
+        </div>
+
+        <div class="history-sessions-list mt-4" id="history-sessions-list">
+          <!-- History session items injected via JavaScript -->
+        </div>
+      </section>
+
+      <!-- 6. REPORTS PAGE -->
+      <section id="page-reports" class="page-section">
+        <div class="page-header">
+          <div>
+            <h2 class="section-title">របាយការណ៍ និងស្ថិតិវត្តមាន</h2>
+            <p class="section-desc">របាយការណ៍សង្ខេបវត្តមានតាមថ្នាក់ និងតាមសិស្សម្នាក់ៗ</p>
+          </div>
+          <button class="btn btn-outline-success" id="btn-export-current-report">
+            📊 នាំចេញរបាយការណ៍ជា Excel
+          </button>
+        </div>
+
+        <div class="report-tabs">
+          <button class="report-tab-btn active" data-report-tab="class-report">របាយការណ៍តាមថ្នាក់ (Class Report)</button>
+          <button class="report-tab-btn" data-report-tab="student-report">របាយការណ៍សិស្សម្នាក់ៗ (Individual)</button>
+        </div>
+
+        <!-- Class Attendance Matrix Tab -->
+        <div id="tab-class-report" class="report-tab-content active">
+          <div class="card mb-3">
+            <div class="form-grid">
+              <div class="form-group">
+                <label>ជ្រើសរើសថ្នាក់</label>
+                <select id="report-class-select" class="form-control"></select>
+              </div>
+              <div class="form-group">
+                <label>ពីថ្ងៃ</label>
+                <input type="date" id="report-from-date" class="form-control">
+              </div>
+              <div class="form-group">
+                <label>ដល់ថ្ងៃ</label>
+                <input type="date" id="report-to-date" class="form-control">
+              </div>
+              <div class="form-group" style="align-self: flex-end;">
+                <button class="btn btn-primary w-100" id="btn-generate-class-report">ទាញយកទិន្នន័យ</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="table-responsive">
+              <table class="data-table" id="report-matrix-table">
+                <thead>
+                  <tr>
+                    <th>ល.រ</th>
+                    <th>ឈ្មោះសិស្ស</th>
+                    <th>អត្តលេខ</th>
+                    <th>មករៀន (✓)</th>
+                    <th>អវត្តមាន (✕)</th>
+                    <th>យឺត (⏰)</th>
+                    <th>ច្បាប់ (📋)</th>
+                    <th>អត្រាវត្តមាន</th>
+                  </tr>
+                </thead>
+                <tbody id="report-matrix-tbody">
+                  <!-- Injected via JavaScript -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Individual Student Report Tab -->
+        <div id="tab-student-report" class="report-tab-content">
+          <div class="card mb-3">
+            <div class="form-grid">
+              <div class="form-group">
+                <label>ជ្រើសរើសសិស្ស</label>
+                <select id="report-student-select" class="form-control"></select>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" id="student-detail-report-card">
+            <!-- Student single profile breakdown -->
+            <div class="empty-state">
+              <p>សូមជ្រើសរើសសិស្សដើម្បីពិនិត្យប្រវត្តិវត្តមានលម្អិត</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 7. IMPORT / EXPORT PAGE -->
+      <section id="page-import-export" class="page-section">
+        <div class="page-header">
+          <div>
+            <h2 class="section-title">នាំចូល និងនាំចេញទិន្នន័យ (Import & Export)</h2>
+            <p class="section-desc">ផ្ទុកទិន្នន័យពី Excel/CSV និងទាញយកកំណត់ត្រាទុកជាឯកសារ</p>
+          </div>
+        </div>
+
+        <div class="two-col-grid">
+          <!-- Real Excel Upload Card -->
+          <div class="card">
+            <h3 class="card-title">📥 នាំចូលបញ្ជីសិស្សពី Excel (.xlsx, .xls, .csv)</h3>
+            <p class="text-muted mt-1">ទាញយកគំរូឯកសារ Excel ខាងក្រោម រួចបំពេញព័ត៌មានសិស្សដើម្បី Upload</p>
+
+            <div class="mt-3">
+              <a href="#" class="btn btn-outline-secondary btn-sm" id="btn-download-excel-template">
+                📄 ទាញយកគំរូ Excel (Template)
+              </a>
+            </div>
+
+            <div class="upload-dropzone mt-3" id="excel-dropzone">
+              <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" class="file-input-hidden">
+              <div class="dropzone-content">
+                <span class="dropzone-icon">📁</span>
+                <p>ចុចទីនេះ ឬទម្លាក់ឯកសារ Excel/CSV</p>
+                <span class="file-hint">គាំទ្រទម្រង់ .xlsx, .xls, .csv</span>
+              </div>
+            </div>
+
+            <!-- Import Preview & Column Mapping Modal/Area -->
+            <div id="import-preview-container" class="mt-4 hidden">
+              <div class="preview-stats">
+                <span class="badge badge-info" id="preview-stat-total">សរុប: ០</span>
+                <span class="badge badge-success" id="preview-stat-valid">✓ ត្រឹមត្រូវ: ០</span>
+                <span class="badge badge-danger" id="preview-stat-invalid">⚠ មានបញ្ហា: ០</span>
+              </div>
+
+              <div class="table-responsive mt-2 max-h-300">
+                <table class="data-table table-sm" id="import-preview-table">
+                  <thead>
+                    <tr>
+                      <th>ស្ថានភាព</th>
+                      <th>ឈ្មោះ (Khmer)</th>
+                      <th>អត្តលេខ</th>
+                      <th>ភេទ</th>
+                      <th>ថ្នាក់</th>
+                      <th>បញ្ហាដែលរកឃើញ</th>
+                    </tr>
+                  </thead>
+                  <tbody id="import-preview-tbody"></tbody>
+                </table>
+              </div>
+
+              <div class="mt-3 text-right">
+                <button class="btn btn-outline-secondary btn-sm" id="btn-cancel-import">បោះបង់</button>
+                <button class="btn btn-success btn-sm" id="btn-confirm-import" disabled>
+                  ✅ នាំចូលទិន្នន័យត្រឹមត្រូវ
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Data Export & Backup Card -->
+          <div class="card">
+            <h3 class="card-title">📤 នាំចេញទិន្នន័យ (Export Data)</h3>
+            <p class="text-muted mt-1">ទាញយកទិន្នន័យសម្រាប់ធ្វើរបាយការណ៍ ឬទុកជាឯកសារផ្លូវការ</p>
+
+            <div class="export-actions-list mt-3">
+              <div class="export-item">
+                <div>
+                  <strong>បញ្ជីសិស្សទាំងអស់ (Student Roster)</strong>
+                  <div class="text-muted text-sm">ទាញយកបញ្ជីឈ្មោះ ភេទ អត្តលេខ និងលេខទូរស័ព្ទ</div>
+                </div>
+                <button class="btn btn-outline-primary btn-sm" id="btn-export-students-excel">Excel (.xlsx)</button>
+              </div>
+
+              <div class="export-item mt-2">
+                <div>
+                  <strong>កំណត់ត្រាវត្តមានសរុប (All Attendance Sessions)</strong>
+                  <div class="text-muted text-sm">ទិន្នន័យវត្តមានគ្រប់កាលបរិច្ឆេទ និងមុខវិជ្ជា</div>
+                </div>
+                <button class="btn btn-outline-primary btn-sm" id="btn-export-all-attendance-excel">Excel (.xlsx)</button>
+              </div>
+            </div>
+
+            <hr class="divider mt-4">
+
+            <h3 class="card-title mt-3">🛡️ ការពារទិន្នន័យ (Backup & Restore)</h3>
+            <p class="text-muted text-sm mt-1">
+              Version 1 រក្សាទុកទិន្នន័យក្នុង Browser ម៉ាស៊ីននេះ។ សូម Backup ជាប្រចាំដើម្បីការពារការបាត់បង់។
+            </p>
+
+            <div class="mt-3 d-flex gap-2">
+              <button class="btn btn-primary btn-sm" id="btn-backup-json">
+                💾 Backup ទិន្នន័យ (.json)
+              </button>
+              <label class="btn btn-outline-secondary btn-sm mb-0 cursor-pointer">
+                📥 Restore ទិន្នន័យ
+                <input type="file" id="restore-json-input" accept=".json" class="d-none">
+              </label>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 8. SETTINGS PAGE -->
+      <section id="page-settings" class="page-section">
+        <div class="page-header">
+          <div>
+            <h2 class="section-title">ការកំណត់ប្រព័ន្ធ (System Settings)</h2>
+            <p class="section-desc">កែសម្រួលព័ត៌មានសាលារៀន និងលក្ខខណ្ឌគណនាវត្តមាន</p>
+          </div>
+        </div>
+
+        <div class="card max-w-700">
+          <form id="settings-form">
+            <div class="form-group">
+              <label for="set-school-name">ឈ្មោះសាលារៀន (School Name)</label>
+              <input type="text" id="set-school-name" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+              <label for="set-academic-year">ឆ្នាំសិក្សា (Academic Year)</label>
+              <input type="text" id="set-academic-year" class="form-control" placeholder="2026-2027" required>
+            </div>
+
+            <div class="form-group">
+              <label for="set-default-mode">ទម្រង់ស្រង់វត្តមានដំបូង (Default Attendance Mode)</label>
+              <select id="set-default-mode" class="form-control">
+                <option value="all_present">មករៀនទាំងអស់ស្វ័យប្រវត្ត (All Present - លឿនបំផុត)</option>
+                <option value="unmarked">មិនទាន់កំណត់ (Unmarked - ជ្រើសម្តងមួយៗ)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="checkbox-container">
+                <input type="checkbox" id="set-late-counts-present" checked>
+                <span class="checkmark"></span>
+                រាប់ «យឺត (Late)» ចូលជាវត្តមានក្នុងការគណនាភាគរយ (Late counts as attended)
+              </label>
+            </div>
+
+            <div class="mt-4">
+              <button type="submit" class="btn btn-primary">រក្សាទុកការកំណត់</button>
+            </div>
+          </form>
+
+          <hr class="divider mt-4">
+
+          <div class="danger-zone mt-4">
+            <h4 class="text-danger">តំបន់ប្រុងប្រយ័ត្ន (Data Management)</h4>
+            <p class="text-muted text-sm">ប្រតិបត្តិការខាងក្រោមនឹងផ្លាស់ប្តូរទិន្នន័យក្នុង Browser</p>
+            <div class="mt-2 d-flex gap-2">
+              <button class="btn btn-outline-warning btn-sm" id="btn-load-demo-data">🔄 បញ្ចូលទិន្នន័យសាកល្បង (Load Demo)</button>
+              <button class="btn btn-outline-danger btn-sm" id="btn-clear-all-data">⚠️ លុបទិន្នន័យទាំងអស់ (Reset)</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Bottom Navigation Bar (Mobile View) -->
+  <nav class="mobile-bottom-nav" aria-label="Mobile Navigation">
+    <button class="bottom-nav-item active" data-page="dashboard">
+      <span class="bottom-nav-icon">📊</span>
+      <span class="bottom-nav-text">ផ្ទាំងសង្ខេប</span>
+    </button>
+    <button class="bottom-nav-item" data-page="attendance">
+      <span class="bottom-nav-icon">📝</span>
+      <span class="bottom-nav-text">វត្តមាន</span>
+    </button>
+    <button class="bottom-nav-item" data-page="students">
+      <span class="bottom-nav-icon">👨‍🎓</span>
+      <span class="bottom-nav-text">សិស្ស</span>
+    </button>
+    <button class="bottom-nav-item" data-page="history">
+      <span class="bottom-nav-icon">📅</span>
+      <span class="bottom-nav-text">ប្រវត្តិ</span>
+    </button>
+    <button class="bottom-nav-item" data-page="settings">
+      <span class="bottom-nav-icon">⚙️</span>
+      <span class="bottom-nav-text">កំណត់</span>
+    </button>
+  </nav>
+
+  <!-- MODAL: ADD / EDIT STUDENT -->
+  <div class="modal-backdrop hidden" id="student-modal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title" id="student-modal-title">បន្ថែមសិស្សថ្មី</h3>
+        <button class="modal-close" data-close-modal="student-modal">&times;</button>
+      </div>
+      <form id="student-form">
+        <input type="hidden" id="student-id-field">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="student-name-input">ឈ្មោះសិស្ស (Khmer) <span class="required">*</span></label>
+            <input type="text" id="student-name-input" class="form-control" placeholder="ឧ. សុខ ដារ៉ា" required>
+          </div>
+          <div class="form-group">
+            <label for="student-code-input">អត្តលេខសិស្ស (Student ID) <span class="required">*</span></label>
+            <input type="text" id="student-code-input" class="form-control" placeholder="ឧ. STU-001" required>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="student-gender-select">ភេទ (Gender) <span class="required">*</span></label>
+              <select id="student-gender-select" class="form-control" required>
+                <option value="M">ប្រុស (Male)</option>
+                <option value="F">ស្រី (Female)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="student-class-select">ថ្នាក់រៀន (Class) <span class="required">*</span></label>
+              <select id="student-class-select" class="form-control" required></select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="student-phone-input">លេខទូរស័ព្ទអាណាព្យាបាល (Guardian Phone)</label>
+            <input type="tel" id="student-phone-input" class="form-control" placeholder="012 345 678">
+          </div>
+          <div class="form-group">
+            <label for="student-notes-input">កំណត់សម្គាល់ (Notes)</label>
+            <textarea id="student-notes-input" class="form-control" rows="2"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal="student-modal">បោះបង់</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-student">រក្សាទុក</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD / EDIT CLASS -->
+  <div class="modal-backdrop hidden" id="class-modal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title" id="class-modal-title">បង្កើតថ្នាក់រៀនថ្មី</h3>
+        <button class="modal-close" data-close-modal="class-modal">&times;</button>
+      </div>
+      <form id="class-form">
+        <input type="hidden" id="class-id-field">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="class-name-kh">ឈ្មោះថ្នាក់ជាភាសាខ្មែរ (Name Khmer) <span class="required">*</span></label>
+            <input type="text" id="class-name-kh" class="form-control" placeholder="ឧ. ថ្នាក់ទី ៤ក" required>
+          </div>
+          <div class="form-group">
+            <label for="class-name-en">ឈ្មោះជាភាសាអង់គ្លេស (Name English)</label>
+            <input type="text" id="class-name-en" class="form-control" placeholder="Grade 4A">
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="class-grade-select">កម្រិតថ្នាក់ (Grade Level) <span class="required">*</span></label>
+              <select id="class-grade-select" class="form-control" required>
+                <option value="1">ថ្នាក់ទី ១</option>
+                <option value="2">ថ្នាក់ទី ២</option>
+                <option value="3">ថ្នាក់ទី ៣</option>
+                <option value="4" selected>ថ្នាក់ទី ៤</option>
+                <option value="5">ថ្នាក់ទី ៥</option>
+                <option value="6">ថ្នាក់ទី ៦</option>
+                <option value="7">ថ្នាក់ទី ៧</option>
+                <option value="8">ថ្នាក់ទី ៨</option>
+                <option value="9">ថ្នាក់ទី ៩</option>
+                <option value="10">ថ្នាក់ទី ១០</option>
+                <option value="11">ថ្នាក់ទី ១១</option>
+                <option value="12">ថ្នាក់ទី ១២</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="class-year-input">ឆ្នាំសិក្សា (Academic Year)</label>
+              <input type="text" id="class-year-input" class="form-control" value="2026-2027">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal="class-modal">បោះបង់</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-class">រក្សាទុកថ្នាក់</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: CONFIRMATION / OVERWRITE GUARD -->
+  <div class="modal-backdrop hidden" id="confirm-modal">
+    <div class="modal-dialog modal-dialog-sm">
+      <div class="modal-header">
+        <h3 class="modal-title" id="confirm-modal-title">ការបញ្ជាក់</h3>
+        <button class="modal-close" data-close-modal="confirm-modal">&times;</button>
+      </div>
+      <div class="modal-body" id="confirm-modal-body">
+        <!-- Message here -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btn-confirm-cancel">បោះបង់</button>
+        <button type="button" class="btn btn-primary" id="btn-confirm-ok">យល់ព្រម</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container" aria-live="assertive"></div>
+
+  <!-- App Modular Scripts -->
+  <script src="js/utils.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/classes.js"></script>
+  <script src="js/students.js"></script>
+  <script src="js/attendance.js"></script>
+  <script src="js/reports.js"></script>
+  <script src="js/import-export.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
